@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multimodal-cybercrime.org/schemas/model-output.schema.json",
+  "title": "ModelOutputEnvelope",
+  "description": "Standardized envelope for all model inference outputs across URL, HTML/NLP, OCR, CV, and Multimodal Fusion modules.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "observation_id",
+    "run_id",
+    "model",
+    "status",
+    "created_at",
+    "result",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0"],
+      "description": "Semantic version of model output schema."
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^obs_[a-f0-9]{32}$",
+      "description": "References the canonical observation being analyzed."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Unique pipeline execution or experiment identifier (e.g., 'run_20261010_eval_url_v1')."
+    },
+    "model": {
+      "type": "object",
+      "required": ["name", "version", "modality"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Model module name (e.g., 'url_feature_classifier', 'html_nlp_detector', 'ocr_text_extractor', 'cv_logo_detector', 'multimodal_evidence_fusion')."
+        },
+        "version": {
+          "type": "string",
+          "description": "Model semantic version or checkpoint git commit."
+        },
+        "modality": {
+          "type": "string",
+          "enum": ["url", "html_nlp", "ocr", "computer_vision", "multimodal_fusion", "graph_enrichment"]
+        },
+        "execution_hardware": {
+          "type": "string",
+          "enum": ["cpu", "cuda_gpu", "mps", "tpu"],
+          "default": "cpu"
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "partial", "skipped", "error"],
+      "description": "Execution status of the model on this specific observation."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when inference completed."
+    },
+    "result": {
+      "type": "object",
+      "description": "Payload specific to the model modality contract. Must be an object when status is 'success' or 'partial', empty object or null on 'skipped' or 'error'."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "artifact_ref": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "error_details": {
+      "type": ["object", "null"],
+      "properties": {
+        "error_type": { "type": "string" },
+        "message": { "type": "string" },
+        "stack_trace": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

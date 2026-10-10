@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "observation_id": "obs_6f80a42371d377b212f45c4aa305609c",
+  "dataset": {
+    "dataset_id": "phishpedia_primary",
+    "version": "1.0.0",
+    "split": "train"
+  },
+  "source_record_id": "1&1 Ionos+2019-07-28-22`34`40",
+  "source": {
+    "collector_type": "phishpedia_crawler",
+    "feed_name": "phishpedia_usenix21_crawl",
+    "family_id": "a53630ccd2f8d0771873a43b98ae0c0d",
+    "phishing_kit": null
+  },
+  "url": {
+    "raw": "http://serv-acamai.com/1und1/de/index.php",
+    "scheme": "http",
+    "host": "serv-acamai.com",
+    "domain": "serv-acamai.com",
+    "subdomain": null,
+    "tld": "com",
+    "port": 80,
+    "path": "/1und1/de/index.php",
+    "query": null
+  },
+  "network": {
+    "ip": "46.30.213.230",
+    "asn": "AS51468",
+    "asn_name": "One.com A/S",
+    "country_code": "DK",
+    "country_name": "Denmark"
+  },
+  "label": {
+    "ground_truth": {
+      "original_label": "phishing",
+      "normalized_label": "phishing",
+      "target_brand": "1&1 Ionos",
+      "target_sector": "Online Services",
+      "confidence": 1.0
+    }
+  },
+  "artifacts": {
+    "screenshot": {
+      "relative_path": "1&1 Ionos+2019-07-28-22`34`40/shot.png",
+      "format": "png",
+      "storage_medium": "zip_entry"
+    },
+    "html": {
+      "relative_path": "1&1 Ionos+2019-07-28-22`34`40/html.txt",
+      "encoding": "utf-8",
+      "storage_medium": "zip_entry"
+    },
+    "ocr": {
+      "relative_path": "1&1 Ionos+2019-07-28-22`34`40/ocr.txt",
+      "storage_medium": "zip_entry"
+    },
+    "metadata_annotation": {
+      "relative_path": "1&1 Ionos+2019-07-28-22`34`40/info.txt",
+      "storage_medium": "zip_entry"
+    },
+    "auxiliary": {
+      "yolo_coords_path": "1&1 Ionos+2019-07-28-22`34`40/yolo_coords.txt",
+      "all_coordinates_path": null,
+      "html_overlap_yolo_path": null,
+      "css_filename_path": null
+    }
+  },
+  "availability": {
+    "has_screenshot": true,
+    "has_html": true,
+    "has_ocr": true,
+    "has_metadata": true,
+    "has_yolo_coords": true,
+    "has_html_overlap": false
+  },
+  "content_hashes": {
+    "screenshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "html_sha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+    "info_sha256": "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d"
+  },
+  "timestamps": {
+    "captured_at": "2019-07-02T21:14:13Z",
+    "ingested_at": "2026-10-10T23:50:00Z"
+  },
+  "provenance": {
+    "created_by": "phishpedia_archive_adapter",
+    "source_archive": "data/phish_sample_30k.zip",
+    "transformation_notes": "Mapped from info.txt raw capture dictionary."
+  }
+}

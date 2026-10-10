@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multimodal-cybercrime.org/schemas/observation.schema.json",
+  "title": "Observation",
+  "description": "Canonical multimodal cybercrime observation representing a single captured webpage or cybercrime event.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "observation_id",
+    "dataset",
+    "source_record_id",
+    "source",
+    "url",
+    "label",
+    "artifacts",
+    "availability",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0"],
+      "description": "Semantic version of the canonical observation schema."
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^obs_[a-f0-9]{32}$",
+      "description": "Stable, unique identifier generated deterministically: obs_<md5(dataset_id + ':' + source_record_id)>"
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["dataset_id", "version"],
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "enum": ["phishpedia_primary", "benign_reference", "external_feed"]
+        },
+        "version": {
+          "type": "string",
+          "default": "1.0.0"
+        },
+        "split": {
+          "type": ["string", "null"],
+          "enum": ["train", "val", "test", null],
+          "description": "Evaluation split assignment if defined or proposed."
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_record_id": {
+      "type": "string",
+      "description": "Raw original identifier or capture directory name from the source (e.g., '1&1 Ionos+2019-07-28-22`34`40')."
+    },
+    "source": {
+      "type": "object",
+      "required": ["collector_type"],
+      "properties": {
+        "collector_type": {
+          "type": "string",
+          "enum": ["phishpedia_crawler", "manual_submission", "feed_collector"]
+        },
+        "feed_name": {
+          "type": "string"
+        },
+        "family_id": {
+          "type": ["string", "null"],
+          "description": "Source campaign or cluster family hash if available."
+        },
+        "phishing_kit": {
+          "type": ["string", "null"],
+          "description": "Phishing kit signature or name if extracted."
+        }
+      },
+      "additionalProperties": false
+    },
+    "url": {
+      "type": "object",
+      "required": ["raw"],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "format": "uri",
+          "description": "Original captured landing URL."
+        },
+        "scheme": {
+          "type": "string",
+          "enum": ["http", "https", "ftp", "unknown"]
+        },
+        "host": {
+          "type": ["string", "null"],
+          "description": "Extracted Fully Qualified Domain Name or IP host string."
+        },
+        "domain": {
+          "type": ["string", "null"],
+          "description": "Registered domain name (SLD + TLD) or null if IP address."
+        },
+        "subdomain": {
+          "type": ["string", "null"]
+        },
+        "tld": {
+          "type": ["string", "null"]
+        },
+        "port": {
+          "type": ["integer", "null"]
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "query": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": ["string", "null"],
+          "description": "Resolved IPv4 or IPv6 address at capture time."
+        },
+        "asn": {
+          "type": ["string", "null"],
+          "description": "Autonomous System Number (e.g. 'AS51468')."
+        },
+        "asn_name": {
+          "type": ["string", "null"],
+          "description": "Registered AS Organization name."
+        },
+        "country_code": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
+        "country_name": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "label": {
+      "type": "object",
+      "required": ["ground_truth"],
+      "properties": {
+        "ground_truth": {
+          "type": "object",
+          "required": ["original_label", "normalized_label"],
+          "properties": {
+            "original_label": {
+              "type": "string",
+              "description": "Exact label preserved from source (e.g., 'phishing')."
+            },
+            "normalized_label": {
+              "type": "string",
+              "enum": ["phishing", "benign", "suspicious", "unknown"],
+              "description": "Standardized canonical taxonomy classification."
+            },
+            "target_brand": {
+              "type": ["string", "null"],
+              "description": "Brand impersonated according to source ground truth (e.g. 'PayPal Inc.')."
+            },
+            "target_sector": {
+              "type": ["string", "null"],
+              "description": "Industry sector targeted (e.g. 'Financial', 'Email Provider')."
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 1.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Configurable, relative paths to available raw multimodal capture files.",
+      "required": ["screenshot"],
+      "properties": {
+        "screenshot": {
+          "type": "object",
+          "required": ["relative_path", "format"],
+          "properties": {
+            "relative_path": {
+              "type": "string",
+              "description": "Path relative to DATASET_ROOT (e.g., '1&1 Ionos+2019-07-28-22`34`40/shot.png')."
+            },
+            "format": {
+              "type": "string",
+              "enum": ["png", "jpeg", "webp"]
+            },
+            "storage_medium": {
+              "type": "string",
+              "enum": ["zip_entry", "filesystem", "s3"],
+              "default": "zip_entry"
+            }
+          },
+          "additionalProperties": false
+        },
+        "html": {
+          "type": ["object", "null"],
+          "properties": {
+            "relative_path": {
+              "type": "string",
+              "description": "Path relative to DATASET_ROOT (e.g., '1&1 Ionos+2019-07-28-22`34`40/html.txt')."
+            },
+            "encoding": {
+              "type": "string",
+              "default": "utf-8"
+            },
+            "storage_medium": {
+              "type": "string",
+              "enum": ["zip_entry", "filesystem", "s3"],
+              "default": "zip_entry"
+            }
+          },
+          "required": ["relative_path"],
+          "additionalProperties": false
+        },
+        "ocr": {
+          "type": ["object", "null"],
+          "properties": {
+            "relative_path": {
+              "type": "string"
+            },
+            "storage_medium": {
+              "type": "string",
+              "enum": ["zip_entry", "filesystem", "s3"],
+              "default": "zip_entry"
+            }
+          },
+          "required": ["relative_path"],
+          "additionalProperties": false
+        },
+        "metadata_annotation": {
+          "type": "object",
+          "required": ["relative_path"],
+          "properties": {
+            "relative_path": {
+              "type": "string",
+              "description": "Path relative to DATASET_ROOT (e.g., '1&1 Ionos+2019-07-28-22`34`40/info.txt')."
+            },
+            "storage_medium": {
+              "type": "string",
+              "enum": ["zip_entry", "filesystem", "s3"],
+              "default": "zip_entry"
+            }
+          },
+          "additionalProperties": false
+        },
+        "auxiliary": {
+          "type": "object",
+          "properties": {
+            "yolo_coords_path": { "type": ["string", "null"] },
+            "all_coordinates_path": { "type": ["string", "null"] },
+            "html_overlap_yolo_path": { "type": ["string", "null"] },
+            "css_filename_path": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "availability": {
+      "type": "object",
+      "required": ["has_screenshot", "has_html", "has_ocr", "has_metadata"],
+      "properties": {
+        "has_screenshot": { "type": "boolean" },
+        "has_html": { "type": "boolean" },
+        "has_ocr": { "type": "boolean" },
+        "has_metadata": { "type": "boolean" },
+        "has_yolo_coords": { "type": "boolean", "default": false },
+        "has_html_overlap": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    },
+    "content_hashes": {
+      "type": "object",
+      "properties": {
+        "screenshot_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "html_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "info_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "timestamps": {
+      "type": "object",
+      "required": ["captured_at"],
+      "properties": {
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Discovery/crawl time from isotime (ISO 8601)."
+        },
+        "ingested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when this observation record was registered."
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["created_by", "source_archive"],
+      "properties": {
+        "created_by": { "type": "string" },
+        "source_archive": { "type": "string" },
+        "transformation_notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
