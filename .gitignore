@@ -63,3 +63,7 @@ checkpoints/
 *.onnx
 scratch/
 .cache/
+
+# Generated pipeline outputs
+outputs/
+
