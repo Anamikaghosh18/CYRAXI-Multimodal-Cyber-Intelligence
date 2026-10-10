@@ -1,0 +1,24 @@
+# Multimodal Fusion Weights & Thresholds Configuration
+# Version: 1.0.0
+# Note: These baseline weights are configurable and must undergo calibration during Module 6.
+
+version: "1.0.0"
+
+# Initial Modality Weights (Sum to 1.0)
+weights:
+  computer_vision: 0.35
+  url: 0.30
+  html_nlp: 0.25
+  ocr: 0.10
+
+# Decision Thresholds
+thresholds:
+  phishing_verdict_threshold: 0.70
+  suspicious_verdict_threshold: 0.45
+  brand_visual_similarity_match: 0.85
+  credential_intent_threshold: 0.75
+
+# Conflict Rules
+conflict_rules:
+  brand_domain_mismatch_penalty: 0.20
+  allow_authorized_cdns: true
