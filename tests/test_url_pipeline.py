@@ -44,8 +44,11 @@ class TestURLFeatureExtractor(unittest.TestCase):
     def test_feature_to_vector_shape(self):
         feats = self.extractor.extract("https://example.com/test")
         vec = feats.to_vector()
-        self.assertEqual(len(vec), 16)
-        self.assertEqual(len(URLFeatureSet.feature_names()), 16)
+        # Feature set expanded to 25 in v2 (9 new anti-spoofing / brand-abuse features added)
+        self.assertEqual(len(vec), 25)
+        self.assertEqual(len(URLFeatureSet.feature_names()), 25)
+        self.assertEqual(len(vec), len(URLFeatureSet.feature_names()), "to_vector() and feature_names() must stay in sync")
+
 
 
 class TestClassifiers(unittest.TestCase):
