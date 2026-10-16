@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 
 
 class URLFeatureSet(BaseModel):
-    """Documented set of extracted lexical, structural, and entropy features."""
+    """Documented set of extracted lexical, structural, entropy, and anti-spoofing features."""
+
+    # ── Original 16 lexical / structural features ──────────────────────────
     url_length: int
     host_length: int
     path_length: int
@@ -27,9 +29,21 @@ class URLFeatureSet(BaseModel):
     entropy_host: float
     suspicious_tld: bool
 
+    # ── Advanced anti-spoofing / brand-abuse features (v2) ─────────────────
+    brand_in_subdomain: bool = False        # known brand token present in subdomain
+    brand_in_path: bool = False             # known brand token present in URL path
+    is_punycode_domain: bool = False        # xn-- IDN / homoglyph domain
+    has_non_ascii_chars: bool = False       # non-ASCII chars in netloc
+    is_url_shortener: bool = False          # domain is a known URL-shortening service
+    percent_encoding_ratio: float = 0.0    # %xx sequences / url_length
+    sensitive_keyword_count: int = 0        # count of phishing keywords in path+query
+    host_path_length_ratio: float = 0.0    # host_length / max(1, path_length)
+    domain_vowel_ratio: float = 0.0        # vowels / (vowels+consonants) in domain
+
     def to_vector(self) -> List[float]:
         """Convert feature set to ordered numerical vector for ML models."""
         return [
+            # original 16
             float(self.url_length),
             float(self.host_length),
             float(self.path_length),
@@ -46,11 +60,22 @@ class URLFeatureSet(BaseModel):
             self.entropy_full_url,
             self.entropy_host,
             1.0 if self.suspicious_tld else 0.0,
+            # v2 anti-spoofing / obfuscation
+            1.0 if self.brand_in_subdomain else 0.0,
+            1.0 if self.brand_in_path else 0.0,
+            1.0 if self.is_punycode_domain else 0.0,
+            1.0 if self.has_non_ascii_chars else 0.0,
+            1.0 if self.is_url_shortener else 0.0,
+            self.percent_encoding_ratio,
+            float(self.sensitive_keyword_count),
+            self.host_path_length_ratio,
+            self.domain_vowel_ratio,
         ]
 
     @classmethod
     def feature_names(cls) -> List[str]:
         return [
+            # original 16
             "url_length",
             "host_length",
             "path_length",
@@ -67,6 +92,16 @@ class URLFeatureSet(BaseModel):
             "entropy_full_url",
             "entropy_host",
             "suspicious_tld",
+            # v2 anti-spoofing / obfuscation
+            "brand_in_subdomain",
+            "brand_in_path",
+            "is_punycode_domain",
+            "has_non_ascii_chars",
+            "is_url_shortener",
+            "percent_encoding_ratio",
+            "sensitive_keyword_count",
+            "host_path_length_ratio",
+            "domain_vowel_ratio",
         ]
 
 
@@ -74,6 +109,10 @@ class URLClassificationResult(BaseModel):
     is_phishing_predicted: bool
     confidence_score: float = Field(ge=0.0, le=1.0)
     verdict: str = Field(pattern="^(phishing|suspicious|benign)$")
+    top_risk_factors: List[str] = Field(
+        default_factory=list,
+        description="Top contributing risk signals, e.g. ['brand_in_path', 'has_ip_in_host']"
+    )
 
 
 class ExtractedURLIndicators(BaseModel):
