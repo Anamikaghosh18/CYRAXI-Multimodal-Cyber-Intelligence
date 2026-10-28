@@ -4,7 +4,10 @@
 
 version: "1.0.0"
 
-# Initial Modality Weights (Sum to 1.0)
+# Baseline weights. Only URL and HTML/NLP currently emit compatible
+# phishing scores. OCR and CV weights are retained for configuration
+# compatibility but those modalities contribute evidence features only.
+# Active URL/HTML weights are renormalized at inference time.
 weights:
   computer_vision: 0.35
   url: 0.30
