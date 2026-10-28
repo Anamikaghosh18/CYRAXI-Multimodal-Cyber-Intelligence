@@ -1,3 +1,8 @@
-from .detector import detect_logo_candidates
+"""
+Computer Vision Detector package exports.
+"""
 
-__all__ = ["detect_logo_candidates"]
+from modules.cv_detector.detector import detect_logo_candidates
+from modules.cv_detector.service import CVDetectorService
+
+__all__ = ["detect_logo_candidates", "CVDetectorService"]
