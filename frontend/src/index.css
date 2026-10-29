@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+::selection {
+  background: #a5f3fc;
+  color: #0f172a;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+*:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
