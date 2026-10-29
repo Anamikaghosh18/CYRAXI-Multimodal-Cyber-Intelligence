@@ -1,9 +1,5 @@
 # CYRAXI: Multimodal Cybercrime Intelligence Platform
 
-[![Schema Validation](https://img.shields.io/badge/Schema-Validated-success)](scripts/validate_schemas.py)
-[![Platform Version](https://img.shields.io/badge/Platform-1.0.0--alpha-blue)](docs/contracts/DATA_CONTRACTS_README.md)
-[![Dataset](https://img.shields.io/badge/Dataset-Phishpedia--30k-orange)](docs/dataset/DATASET_INVENTORY.md)
-
 CYRAXI is a multimodal cybercrime intelligence platform designed to detect, analyze, and attribute phishing infrastructure and campaigns by fusing:
 - **URL & Network Analysis:** Lexical, entropy, ASN, and DNS features
 - **HTML & NLP Analysis:** DOM structure, form actions, and credential-harvesting intent
@@ -11,6 +7,18 @@ CYRAXI is a multimodal cybercrime intelligence platform designed to detect, anal
 - **Computer Vision:** Visual logo detection and Siamese visual similarity matching
 - **Multimodal Evidence Fusion:** Calibrated reweighting and identity-conflict assessment
 - **Neo4j Knowledge Graph:** Relational mapping connecting URLs, hosts, captures, evidence, and campaign candidates
+
+For a client-ready product overview and demo script, see [Client Demo Talk Track](docs/CLIENT_DEMO_TALK_TRACK.md).
+
+## Run the backend
+
+From the repository root, run `python backend_main.py`. This starts the investigation API on port 8002 and the graph API on port 8001. Press Ctrl+C to stop both services. Neo4j must be running for graph-backed requests.
+
+For the local RustFS artifact-storage workflow, follow [Local RustFS setup](docs/RUSTFS_LOCAL_SETUP.md). In short: copy `.env.example` to `.env`, install `requirements-rustfs.txt`, run `docker compose up -d neo4j rustfs`, import the archive with `python scripts/import_archive_to_rustfs.py`, then start the backend. RustFS stores the archive evidence; Neo4j remains the attack index and graph.
+
+## Run the dashboard
+
+In a second terminal, run `cd frontend` followed by `npm run dev`, then open the local URL printed by Vite. Select attack records for a run, then review the evidence and graph in each saved report.
 
 ---
 
