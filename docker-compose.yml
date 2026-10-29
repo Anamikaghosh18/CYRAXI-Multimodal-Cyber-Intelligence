@@ -1,5 +1,3 @@
-version: "3.9"
-
 # CYRAXI — Local Development Services
 # Usage: docker compose up -d
 # Neo4j Browser: http://localhost:7474  (user: neo4j / pass: cyraxi_dev)
@@ -22,6 +20,22 @@ services:
       - neo4j_data:/data
       - neo4j_logs:/logs
 
+  rustfs:
+    image: rustfs/rustfs:1.0.3
+    container_name: cyraxi-rustfs
+    restart: unless-stopped
+    command: ["/data"]
+    ports:
+      - "9000:9000"   # S3-compatible API
+      - "9001:9001"   # RustFS console
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:-cyraxiadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:-cyraxi-local-change-this}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    volumes:
+      - rustfs_data:/data
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  rustfs_data:

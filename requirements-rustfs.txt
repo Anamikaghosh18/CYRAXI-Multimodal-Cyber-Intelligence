@@ -1,0 +1,2 @@
+# Optional dependency for streaming local archive evidence to and from RustFS.
+boto3>=1.34,<2.0
