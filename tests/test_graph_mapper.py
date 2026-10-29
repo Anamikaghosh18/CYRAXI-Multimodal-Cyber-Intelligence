@@ -44,6 +44,8 @@ SAMPLE_META = {
     "isotime": "2020-04-15T12:00:00Z",
     "dataset_id": "phishpedia_primary",
     "source_record_id": "PayPal+2020-04-15-12`00`00",
+    "html_hash": "abc123def456",
+    "screenshot_hash": "xyz789uvw012",
 }
 
 SAMPLE_URL_ENVELOPE = {
@@ -103,14 +105,14 @@ class TestGraphEnrichmentMapper(unittest.TestCase):
         req = self._make_request(outputs=[])
         result = self.mapper.ingest(req)
         self.assertEqual(result.observation_id, SAMPLE_META["observation_id"])
-        # Should create: Observation, URL, Domain, IP, AS, Brand, Campaign = 7 nodes
-        self.assertEqual(result.nodes_merged, 7)
+        # Should create: Observation, URL, Domain, IP, AS, Brand, WebPageCapture, Campaign = 8 nodes
+        self.assertEqual(result.nodes_merged, 8)
 
     def test_ingest_creates_expected_node_count_with_url_output(self):
         req = self._make_request(outputs=[SAMPLE_URL_ENVELOPE])
         result = self.mapper.ingest(req)
-        # 7 core + 2 (ModelRun + Prediction) = 9
-        self.assertEqual(result.nodes_merged, 9)
+        # 8 core + 2 (ModelRun + Prediction) + 5 (EvidenceItems: 3 risk factors + confidence + verdict) = 15
+        self.assertEqual(result.nodes_merged, 15)
 
     def test_observation_id_preserved_from_meta(self):
         req = self._make_request()
@@ -149,6 +151,25 @@ class TestGraphEnrichmentMapper(unittest.TestCase):
         self.assertIn("Observation", all_cypher)
         self.assertIn("Brand", all_cypher)
         self.assertIn("IPAddress", all_cypher)
+        self.assertIn("WebPageCapture", all_cypher)
+
+    def test_webpage_capture_node_created_with_hashes(self):
+        req = self._make_request(outputs=[])
+        self.mapper.ingest(req)
+        all_cypher = " ".join(c for c, _ in self.driver.write_calls)
+        self.assertIn("WebPageCapture", all_cypher)
+        self.assertIn("STORED_AS", all_cypher)
+        self.assertIn("html_hash", all_cypher)
+        self.assertIn("screenshot_hash", all_cypher)
+
+    def test_evidence_items_created_from_model_output(self):
+        req = self._make_request(outputs=[SAMPLE_URL_ENVELOPE])
+        result = self.mapper.ingest(req)
+        # Should have evidence items from risk factors and other extracted features
+        all_cypher = " ".join(c for c, _ in self.driver.write_calls)
+        self.assertIn("EvidenceItem", all_cypher)
+        self.assertIn("SUPPORTED_BY", all_cypher)
+        self.assertIn("metric_name", all_cypher)
 
 
 if __name__ == "__main__":

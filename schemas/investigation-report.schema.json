@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multimodal-cybercrime.org/schemas/investigation-report.schema.json",
+  "title": "InvestigationReport",
+  "description": "Structured cybercrime investigation report combining multimodal detection results, graph intelligence, and evidence links.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "investigation_id",
+    "observation_id",
+    "input_type",
+    "input_value",
+    "status",
+    "created_at",
+    "module_results",
+    "related_observations",
+    "graph_intelligence",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0"],
+      "description": "Semantic version of investigation report schema."
+    },
+    "investigation_id": {
+      "type": "string",
+      "pattern": "^inv_[a-f0-9]{32}$",
+      "description": "Unique investigation identifier: inv_<md5(observation_id + timestamp)>"
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^obs_[a-f0-9]{32}$",
+      "description": "The observation ID being investigated."
+    },
+    "input_type": {
+      "type": "string",
+      "enum": ["observation_id", "url"],
+      "description": "Type of input used to start investigation."
+    },
+    "input_value": {
+      "type": "string",
+      "description": "The actual input value (observation ID or URL)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "partial", "error"],
+      "description": "Overall investigation status."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when investigation completed."
+    },
+    "observation_data": {
+      "type": ["object", "null"],
+      "description": "Basic observation metadata (URL, brand, timestamp)."
+    },
+    "module_results": {
+      "type": "object",
+      "description": "Results from individual detection modules.",
+      "properties": {
+        "url": {
+          "type": ["object", "null"],
+          "description": "URL analysis envelope result."
+        },
+        "html_nlp": {
+          "type": ["object", "null"],
+          "description": "HTML/NLP analysis envelope result."
+        },
+        "ocr": {
+          "type": ["object", "null"],
+          "description": "OCR analysis envelope result."
+        },
+        "computer_vision": {
+          "type": ["object", "null"],
+          "description": "Computer vision analysis envelope result."
+        },
+        "multimodal_fusion": {
+          "type": ["object", "null"],
+          "description": "Multimodal fusion envelope result."
+        }
+      }
+    },
+    "overall_assessment": {
+      "type": ["object", "null"],
+      "description": "Overall phishing assessment if fusion model supports it.",
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["phishing", "benign", "suspicious", "unknown"],
+          "description": "Final classification verdict."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence score from fusion model."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Natural language explanation of the assessment."
+        }
+      }
+    },
+    "related_observations": {
+      "type": "array",
+      "description": "Related observations ranked by evidence-based relevance.",
+      "items": {
+        "type": "object",
+        "required": ["observation_id", "similarity_score", "explanation"],
+        "properties": {
+          "observation_id": {
+            "type": "string",
+            "pattern": "^obs_[a-f0-9]{32}$"
+          },
+          "similarity_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "relationship_type": {
+            "type": "string",
+            "enum": ["candidate_similar_to", "near_duplicate_to"],
+            "description": "Type of relationship."
+          },
+          "feature_contributions": {
+            "type": "object",
+            "description": "Individual feature scores contributing to similarity."
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Deterministic explanation of why this observation was retrieved."
+          },
+          "url": {
+            "type": ["string", "null"],
+            "description": "URL of related observation if available."
+          },
+          "brand": {
+            "type": ["string", "null"],
+            "description": "Target brand if available."
+          }
+        }
+      }
+    },
+    "graph_intelligence": {
+      "type": "object",
+      "description": "Graph-based intelligence results.",
+      "properties": {
+        "community": {
+          "type": ["object", "null"],
+          "description": "Community/cluster information.",
+          "properties": {
+            "cluster_id": {
+              "type": "string"
+            },
+            "cluster_size": {
+              "type": "integer"
+            },
+            "explanation": {
+              "type": "string"
+            }
+          }
+        },
+        "entity_ranking": {
+          "type": ["object", "null"],
+          "description": "Entity ranking results.",
+          "properties": {
+            "domain_rank": {
+              "type": ["number", "null"]
+            },
+            "observation_rank": {
+              "type": ["number", "null"]
+            },
+            "explanation": {
+              "type": "string"
+            }
+          }
+        },
+        "temporal_analysis": {
+          "type": ["object", "null"],
+          "description": "Temporal analysis results if available.",
+          "properties": {
+            "time_bucket": {
+              "type": "string"
+            },
+            "is_burst": {
+              "type": "boolean"
+            },
+            "nearby_observations": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "evidence_references": {
+      "type": "array",
+      "description": "Supporting evidence references.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string"
+          },
+          "modality": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "graph_paths": {
+      "type": "array",
+      "description": "Relevant graph paths connecting to related observations.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path_type": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relationships": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Missing-data warnings and uncertainty indicators.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "module": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "algorithm_versions": {
+      "type": "object",
+      "description": "Algorithm and model versions used.",
+      "properties": {
+        "similarity": {
+          "type": "string"
+        },
+        "community_detection": {
+          "type": "string"
+        },
+        "entity_ranking": {
+          "type": "string"
+        }
+      }
+    },
+    "execution_metadata": {
+      "type": "object",
+      "description": "Execution metadata including runtime and resource usage.",
+      "properties": {
+        "total_runtime_ms": {
+          "type": "number"
+        },
+        "stages": {
+          "type": "object",
+          "description": "Runtime per stage.",
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

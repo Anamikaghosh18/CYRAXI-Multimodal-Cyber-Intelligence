@@ -1,0 +1,17 @@
+# Graph AI Candidate Generation Configuration
+# Settings for generating candidate observation pairs
+
+max_candidates_per_observation: 100
+
+# Enable/disable indexing strategies
+use_domain_index: true
+use_ip_index: true
+use_brand_index: true
+use_url_similarity: false  # More expensive, disabled by default
+
+# Brand-based candidate limit to avoid popular brands overwhelming results
+brand_candidate_limit: 50
+
+# Sampling strategies (for large datasets)
+sample_fraction: 1.0  # 1.0 = use all observations
+random_seed: 42

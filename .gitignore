@@ -1,23 +1,58 @@
-# Large dataset files (MUST NOT BE PUSHED TO GITHUB)
+# =========================================================
+# CYRAXI — ROOT GITIGNORE
+# =========================================================
+
+# -------------------------
+# LARGE DATASETS
+# -------------------------
 data/
+datasets/
 *.zip
 *.tar.gz
 *.tar
 *.7z
+*.rar
+*.parquet
+*.feather
 
-# Python artifacts
+# -------------------------
+# ENVIRONMENT VARIABLES & SECRETS
+# -------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+secrets/
+credentials.json
+service-account*.json
+
+# -------------------------
+# PYTHON BACKEND
+# -------------------------
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python packaging/build
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -29,22 +64,84 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-env.bak/
-venv.bak/
+# Python testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+.pyre/
+.ruff_cache/
+hypothesis/
 
-# Environment variables & secrets
-.env
-.env.*
-!.env.example
-*.pem
-*.key
+# Jupyter
+.ipynb_checkpoints/
 
-# IDE & OS caches
+# Django
+staticfiles/
+media/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# -------------------------
+# FRONTEND: REACT + VITE
+# -------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Package manager caches
+.npm/
+.pnpm-store/
+
+# TypeScript generated files
+*.tsbuildinfo
+
+# -------------------------
+# ML / AI MODEL ARTIFACTS
+# -------------------------
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+
+# Generated model and pipeline outputs
+outputs/
+output/
+runs/
+checkpoints/
+wandb/
+mlruns/
+scratch/
+.cache/
+huggingface_cache/
+
+# -------------------------
+# LOGS
+# -------------------------
+logs/
+*.log
+
+# -------------------------
+# IDE & OPERATING SYSTEM
+# -------------------------
 .vscode/
 .idea/
 *.swp
@@ -52,18 +149,4 @@ venv.bak/
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Output / logs / caches
-logs/
-*.log
-runs/
-checkpoints/
-*.pt
-*.pth
-*.onnx
-scratch/
-.cache/
-
-# Generated pipeline outputs
-outputs/
 

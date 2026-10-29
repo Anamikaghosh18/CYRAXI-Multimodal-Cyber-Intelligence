@@ -1,0 +1,42 @@
+# Graph AI Similarity Scoring Configuration
+# Weights for pairwise features in similarity computation
+
+feature_weights:
+  # URL features
+  url_exact_match: 1.0
+  url_domain_match: 0.8
+  url_registered_domain_match: 0.6
+  url_path_jaccard: 0.3
+  url_edit_similarity: 0.4
+
+  # HTML features
+  html_hash_match: 0.9
+
+  # OCR features
+  ocr_text_jaccard: 0.5
+  ocr_shared_keywords: 0.7
+  ocr_shared_brands: 0.8
+
+  # Screenshot features
+  screenshot_phash_match: 0.9
+
+  # Network features
+  network_ip_match: 0.7
+  network_asn_match: 0.5
+  network_country_match: 0.3
+
+  # Brand and family (lower weight for brand to avoid popular brand bias)
+  brand_match: 0.2
+  family_id_match: 0.0  # Exclude from scoring (ground truth)
+
+hard_constraints:
+  # Maximum similarity score if observations target different brands
+  different_brand_max_score: 0.5
+
+thresholds:
+  # Minimum score to be considered a candidate
+  candidate: 0.3
+  # Minimum score to require manual review
+  review: 0.6
+  # Minimum score for high-confidence similarity
+  high_similarity: 0.8

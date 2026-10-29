@@ -1,5 +1,5 @@
 """
-Graph Enrichment Mapper — Core Mapper Service
+Graph Enrichment Mapper - Core Mapper Service
 Translates a canonical observation + model outputs into Neo4j Cypher MERGE statements.
 
 Node types written per call:
@@ -196,7 +196,43 @@ class GraphEnrichmentMapper:
             nodes_merged += 1
             rels_merged  += 1
 
-        # ── 8. CampaignCandidate node + edge ──────────────────────────────
+        # ── 8. WebPageCapture node + edge ──────────────────────────────────
+        # Check if we have artifact metadata (html_hash, screenshot_hash, etc.)
+        html_hash = meta.get("html_hash", "")
+        screenshot_hash = meta.get("screenshot_hash", "")
+        has_html = bool(html_hash)
+        has_ocr = bool(screenshot_hash)  # OCR availability inferred from screenshot
+
+        if html_hash or screenshot_hash:
+            capture_id = f"cap_{_sha256(obs_id)[:24]}"
+            self._driver.run_write(
+                """
+                MERGE (c:WebPageCapture {capture_id: $capture_id})
+                ON CREATE SET
+                    c.screenshot_hash = $screenshot_hash,
+                    c.html_hash = $html_hash,
+                    c.capture_time = $isotime,
+                    c.has_html = $has_html,
+                    c.has_ocr = $has_ocr
+
+                WITH c
+                MATCH (o:Observation {observation_id: $obs_id})
+                MERGE (o)-[r:STORED_AS]->(c)
+                """,
+                {
+                    "capture_id":      capture_id,
+                    "screenshot_hash": screenshot_hash,
+                    "html_hash":       html_hash,
+                    "isotime":         isotime,
+                    "has_html":        has_html,
+                    "has_ocr":         has_ocr,
+                    "obs_id":          obs_id,
+                },
+            )
+            nodes_merged += 1
+            rels_merged  += 1
+
+        # ── 9. CampaignCandidate node + edge ──────────────────────────────
         if family_id:
             camp_id = f"camp_{_sha256(family_id)[:24]}"
             self._driver.run_write(
@@ -289,7 +325,7 @@ class GraphEnrichmentMapper:
         # Prediction node (only if classification is available)
         classification = envelope.get("result", {}).get("classification", {})
         if not classification:
-            warns.append(f"No classification in {modality} envelope — Prediction node skipped")
+            warns.append(f"No classification in {modality} envelope - Prediction node skipped")
             return nodes, rels, warns
 
         verdict    = classification.get("verdict", "unknown")
@@ -336,6 +372,40 @@ class GraphEnrichmentMapper:
         nodes += 1
         rels  += 2
 
+        # ── EvidenceItem nodes from risk factors ─────────────────────────
+        # Extract evidence items from top_risk_factors and other model output fields
+        evidence_items = self._extract_evidence_items(envelope, modality)
+        for ev in evidence_items:
+            ev_id = f"evid_{_sha256(pred_id + ev['metric_name'])[:24]}"
+            self._driver.run_write(
+                """
+                MERGE (e:EvidenceItem {evidence_id: $ev_id})
+                ON CREATE SET
+                    e.modality    = $modality,
+                    e.metric_name = $metric_name,
+                    e.score       = $score,
+                    e.description = $description,
+                    e.created_at  = $now
+
+                WITH e
+                MATCH (p:Prediction {prediction_id: $pred_id})
+                MERGE (p)-[r:SUPPORTED_BY]->(e)
+                ON CREATE SET r.weight_contribution = $weight
+                """,
+                {
+                    "ev_id":       ev_id,
+                    "modality":    modality,
+                    "metric_name": ev["metric_name"],
+                    "score":       ev["score"],
+                    "description": ev["description"],
+                    "now":         _now_iso(),
+                    "pred_id":     pred_id,
+                    "weight":      ev.get("weight", 1.0),
+                },
+            )
+            nodes += 1
+            rels  += 1
+
         return nodes, rels, warns
 
     @staticmethod
@@ -343,3 +413,63 @@ class GraphEnrichmentMapper:
         """Generate a deterministic obs_id from URL + brand when not already present."""
         seed = f"{meta.get('url', '')}:{meta.get('brand', '')}"
         return f"obs_{hashlib.md5(seed.encode()).hexdigest()}"
+
+    def _extract_evidence_items(
+        self, envelope: Dict[str, Any], modality: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract evidence items from a model output envelope.
+        Evidence items represent atomic pieces of evidence that support a prediction.
+
+        Returns a list of dicts with keys: metric_name, score, description, weight
+        """
+        evidence: List[Dict[str, Any]] = []
+        classification = envelope.get("result", {}).get("classification", {})
+
+        # Extract from top_risk_factors (URL analyzer)
+        top_factors = classification.get("top_risk_factors", [])
+        for factor in top_factors:
+            evidence.append({
+                "metric_name": "risk_factor",
+                "score": 1.0,  # Binary presence of risk factor
+                "description": factor,
+                "weight": 0.1,
+            })
+
+        # Extract from feature importance or scores if available
+        result = envelope.get("result", {})
+        features = result.get("features", {})
+        if features:
+            # Take top 5 most influential features by score
+            sorted_features = sorted(
+                features.items(),
+                key=lambda x: abs(x[1]),
+                reverse=True
+            )[:5]
+            for feat_name, feat_score in sorted_features:
+                evidence.append({
+                    "metric_name": feat_name,
+                    "score": float(feat_score),
+                    "description": f"Feature contribution: {feat_name}",
+                    "weight": abs(float(feat_score)) / 10.0,  # Normalize weight
+                })
+
+        # Extract confidence score as an evidence item
+        confidence = classification.get("confidence_score", 0.0)
+        evidence.append({
+            "metric_name": "confidence_score",
+            "score": confidence,
+            "description": f"Model confidence score for {modality} analysis",
+            "weight": 0.2,
+        })
+
+        # Extract verdict as evidence
+        verdict = classification.get("verdict", "unknown")
+        evidence.append({
+            "metric_name": "verdict",
+            "score": 1.0 if verdict == "phishing" else 0.0,
+            "description": f"Model verdict: {verdict}",
+            "weight": 0.3,
+        })
+
+        return evidence

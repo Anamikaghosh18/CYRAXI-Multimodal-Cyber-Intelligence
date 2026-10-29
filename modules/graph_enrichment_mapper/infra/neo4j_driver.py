@@ -34,7 +34,33 @@ class Neo4jDriver:
         self._user     = user     or os.getenv("NEO4J_USER",     "neo4j")
         self._password = password or os.getenv("NEO4J_PASSWORD", "cyraxi_dev")
         self._driver   = None
-        self._connect()
+
+    def connect(self) -> None:
+        """Explicitly establish the Bolt connection.
+
+        Moved out of __init__ so callers can control when the driver is
+        connected. This also keeps the constructor side-effect free, which
+        makes graph services easier to construct, test, and restart.
+        """
+        if self._driver is not None:
+            return
+        try:
+            from neo4j import GraphDatabase  # type: ignore
+            self._driver = GraphDatabase.driver(
+                self._uri,
+                auth=(self._user, self._password),
+            )
+            # Verify connectivity on startup
+            self._driver.verify_connectivity()
+        except ImportError:
+            raise GraphConnectionError(
+                "neo4j Python package is not installed. "
+                "Run: pip install neo4j"
+            )
+        except Exception as exc:
+            raise GraphConnectionError(
+                f"Cannot connect to Neo4j at {self._uri}: {exc}"
+            ) from exc
 
     def _connect(self) -> None:
         try:
@@ -67,6 +93,14 @@ class Neo4jDriver:
             result = session.run(cypher, params or {})
             return [dict(record) for record in result]
 
+    def run_read(
+        self,
+        cypher: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Execute a read query; kept as a semantic alias for service callers."""
+        return self.run_query(cypher, params)
+
     def run_write(self, cypher: str, params: Optional[Dict[str, Any]] = None) -> None:
         """Execute a write Cypher statement (MERGE / CREATE / SET)."""
         if self._driver is None:
@@ -89,9 +123,13 @@ class Neo4jDriver:
             "CREATE CONSTRAINT c_run_id IF NOT EXISTS FOR (r:ModelRun) REQUIRE r.run_id IS UNIQUE",
             "CREATE CONSTRAINT c_pred_id IF NOT EXISTS FOR (p:Prediction) REQUIRE p.prediction_id IS UNIQUE",
             "CREATE CONSTRAINT c_campaign_id IF NOT EXISTS FOR (c:CampaignCandidate) REQUIRE c.campaign_id IS UNIQUE",
+            "CREATE CONSTRAINT c_capture_id IF NOT EXISTS FOR (c:WebPageCapture) REQUIRE c.capture_id IS UNIQUE",
+            "CREATE CONSTRAINT c_evidence_id IF NOT EXISTS FOR (e:EvidenceItem) REQUIRE e.evidence_id IS UNIQUE",
             "CREATE INDEX idx_obs_captured_at IF NOT EXISTS FOR (o:Observation) ON (o.captured_at)",
             "CREATE INDEX idx_brand_name IF NOT EXISTS FOR (b:Brand) ON (b.name)",
             "CREATE INDEX idx_campaign_family IF NOT EXISTS FOR (c:CampaignCandidate) ON (c.family_id)",
+            "CREATE INDEX idx_capture_time IF NOT EXISTS FOR (c:WebPageCapture) ON (c.capture_time)",
+            "CREATE INDEX idx_evidence_modality IF NOT EXISTS FOR (e:EvidenceItem) ON (e.modality)",
         ]
         for stmt in statements:
             try:
@@ -100,11 +138,14 @@ class Neo4jDriver:
                 pass  # constraint already exists — safe to ignore
 
     def close(self) -> None:
-        if self._driver:
-            self._driver.close()
-            self._driver = None
+        if self._driver is not None:
+            try:
+                self._driver.close()
+            finally:
+                self._driver = None
 
     def __enter__(self):
+        self.connect()
         return self
 
     def __exit__(self, *_):

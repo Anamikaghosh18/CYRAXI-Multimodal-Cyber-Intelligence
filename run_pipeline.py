@@ -135,6 +135,7 @@ def run_pipeline(
     if not dry_run:
         try:
             driver = Neo4jDriver(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
+            driver.connect()
             driver.apply_schema_constraints()
             mapper = GraphEnrichmentMapper(driver)
             print(f"  [neo4j] Connected to {NEO4J_URI}\n")
