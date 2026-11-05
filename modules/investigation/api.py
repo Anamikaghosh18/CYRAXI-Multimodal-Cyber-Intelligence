@@ -33,7 +33,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",") if o.strip()],
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -45,30 +45,24 @@ def create_app() -> FastAPI:
         load_project_env()
         if _state["service"] is not None:
             return _state["service"]
-        if _state["error"]:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Service unavailable: {_state['error']}",
-            )
+        neo4j_driver = None
         try:
             neo4j_driver = Neo4jDriver()
             neo4j_driver.connect()
-            service = InvestigationService(
-                archive_path=os.getenv("PHISHPEDIA_ARCHIVE_PATH", "data/phish_sample_30k.zip"),
-                neo4j_driver=neo4j_driver,
-            )
-            persistence = InvestigationPersistence(
-                neo4j_driver=neo4j_driver,
-                output_dir="output/investigations",
-            )
-            _state["service"] = service
-            _state["persistence"] = persistence
-        except GraphConnectionError as exc:
-            _state["error"] = str(exc)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(exc),
-            )
+        except Exception:
+            neo4j_driver = None
+
+        service = InvestigationService(
+            archive_path=os.getenv("PHISHPEDIA_ARCHIVE_PATH", "data/phish_sample_30k.zip"),
+            neo4j_driver=neo4j_driver,
+        )
+        persistence = InvestigationPersistence(
+            neo4j_driver=neo4j_driver,
+            output_dir="output/investigations",
+        )
+        _state["service"] = service
+        _state["persistence"] = persistence
+        _state["error"] = None
         return _state["service"]
 
     @app.on_event("shutdown")
@@ -211,7 +205,7 @@ def create_app() -> FastAPI:
         tags=["Investigation"],
     )
     def get_investigation(investigation_id: str):
-        """Retrieve a saved investigation report."""
+        """Retrieve a saved investigation report, enriched with live graph intelligence if available."""
         from pathlib import Path
         import json
 
@@ -223,8 +217,52 @@ def create_app() -> FastAPI:
                 detail=f"Investigation {investigation_id} not found",
             )
 
-        with open(report_path, "r") as f:
-            return json.load(f)
+        with open(report_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+
+        # Enrich report if related observations or community are missing in older saved files
+        obs_id = report.get("observation_id")
+        if obs_id:
+            try:
+                service = _get_service()
+                if service and getattr(service, "neo4j_driver", None):
+                    updated = False
+                    if not report.get("related_observations"):
+                        related = service._retrieve_related_observations(obs_id)
+                        if related:
+                            report["related_observations"] = related
+                            updated = True
+
+                    gi = report.get("graph_intelligence") or {}
+                    if not gi.get("community") or not gi["community"].get("cluster_id"):
+                        comm = service._retrieve_community_info(obs_id)
+                        if comm:
+                            gi["community"] = comm
+                            updated = True
+
+                    if not gi.get("entity_ranking") or not gi["entity_ranking"].get("observation_rank"):
+                        ranking = service._retrieve_entity_ranking(obs_id)
+                        if ranking:
+                            gi["entity_ranking"] = ranking
+                            updated = True
+
+                    if not gi.get("temporal_analysis") or not gi["temporal_analysis"].get("time_bucket"):
+                        temporal = service._retrieve_temporal_info(obs_id)
+                        if temporal:
+                            gi["temporal_analysis"] = temporal
+                            updated = True
+
+                    if updated:
+                        report["graph_intelligence"] = gi
+                        try:
+                            with open(report_path, "w", encoding="utf-8") as f:
+                                json.dump(report, f, indent=2)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        return report
 
     @app.get(
         "/api/v1/investigation",

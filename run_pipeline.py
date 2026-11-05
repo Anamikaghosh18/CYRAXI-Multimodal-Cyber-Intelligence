@@ -41,7 +41,7 @@ from modules.graph_enrichment_mapper.mapper import GraphEnrichmentMapper
 ARCHIVE_PATH   = os.getenv("PHISHPEDIA_ARCHIVE_PATH", "data/phish_sample_30k.zip")
 HGB_MODEL_PATH = "modules/url_analyzer/models/saved/url_hgb_model.joblib"
 NEO4J_URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-NEO4J_USER     = os.getenv("NEO4J_USER",     "neo4j")
+NEO4J_USER     = os.getenv("NEO4J_USERNAME") or os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "cyraxi_dev")
 OUTPUTS_DIR    = Path("outputs")
 

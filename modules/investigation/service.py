@@ -343,10 +343,14 @@ class InvestigationService:
         related = []
 
         try:
-            # Query CANDIDATE_SIMILAR_TO relationships
+            import json
+            # Query CANDIDATE_SIMILAR_TO relationships (bidirectional)
             query = """
-            MATCH (o:Observation {observation_id: $obs_id})-[r:CANDIDATE_SIMILAR_TO]->(related:Observation)
-            RETURN related.observation_id as obs_id, r.similarity_score as score, r.feature_contributions as features
+            MATCH (o:Observation {observation_id: $obs_id})-[r:CANDIDATE_SIMILAR_TO]-(related:Observation)
+            RETURN related.observation_id as obs_id,
+                   r.similarity_score as score,
+                   coalesce(r.explanation, '') as explanation,
+                   coalesce(r.contributing_features_json, r.feature_contributions, '') as features
             ORDER BY r.similarity_score DESC
             LIMIT $limit
             """
@@ -355,15 +359,36 @@ class InvestigationService:
 
             if response:
                 for record in response:
+                    raw_features = record.get("features", "")
+                    parsed_features = {}
+                    if isinstance(raw_features, str) and raw_features.strip():
+                        try:
+                            feat_list = json.loads(raw_features)
+                            if isinstance(feat_list, list):
+                                parsed_features = {
+                                    item.get("feature"): item.get("contribution", item.get("value", 0))
+                                    for item in feat_list if isinstance(item, dict)
+                                }
+                            elif isinstance(feat_list, dict):
+                                parsed_features = feat_list
+                        except Exception:
+                            parsed_features = {}
+                    elif isinstance(raw_features, dict):
+                        parsed_features = raw_features
+
+                    expl = record.get("explanation")
+                    if not expl or not str(expl).strip():
+                        expl = self._generate_similarity_explanation(parsed_features)
+
                     related.append({
                         "observation_id": record.get("obs_id"),
                         "similarity_score": record.get("score", 0.0),
                         "relationship_type": "candidate_similar_to",
-                        "feature_contributions": record.get("features", {}),
-                        "explanation": self._generate_similarity_explanation(record.get("features", {})),
+                        "feature_contributions": parsed_features,
+                        "explanation": expl,
                     })
 
-        except Exception as e:
+        except Exception:
             pass
 
         return related
@@ -423,11 +448,14 @@ class InvestigationService:
 
             if response and len(response) > 0:
                 record = response[0]
-                return {
-                    "cluster_id": record.get("cluster_id"),
-                    "cluster_size": record.get("cluster_size"),
-                    "explanation": f"Part of cluster {record.get('cluster_id')} with {record.get('cluster_size')} observations",
-                }
+                cluster_id = record.get("cluster_id")
+                cluster_size = record.get("cluster_size")
+                if cluster_id:
+                    return {
+                        "cluster_id": cluster_id,
+                        "cluster_size": cluster_size,
+                        "explanation": f"Part of cluster {cluster_id} with {cluster_size} observations",
+                    }
         except Exception:
             pass
 
@@ -438,16 +466,20 @@ class InvestigationService:
         try:
             query = """
             MATCH (o:Observation {observation_id: $obs_id})
-            RETURN o.pagerank_score as pagerank, o.degree_centrality as degree
+            RETURN o.pagerank_score as pagerank, o.degree_centrality as degree, o.ranking_rank as rank, o.ranking_population_size as population
             """
 
             response = self.neo4j_driver.run_read(query, {"obs_id": obs_id})
 
             if response and len(response) > 0:
                 record = response[0]
+                rank = record.get("rank")
+                pop = record.get("population")
+                rank_str = f" (Rank #{rank} of {pop})" if rank and pop else ""
+                score = record.get("pagerank", 0.0) or 0.0
                 return {
-                    "observation_rank": record.get("pagerank"),
-                    "explanation": f"PageRank score: {record.get('pagerank', 0.0):.4f}",
+                    "observation_rank": score,
+                    "explanation": f"PageRank score: {score:.4f}{rank_str}",
                 }
         except Exception:
             pass
@@ -459,17 +491,18 @@ class InvestigationService:
         try:
             query = """
             MATCH (o:Observation {observation_id: $obs_id})
-            RETURN o.time_bucket as time_bucket
+            RETURN o.time_bucket as time_bucket, o.is_burst as is_burst
             """
 
             response = self.neo4j_driver.run_read(query, {"obs_id": obs_id})
 
             if response and len(response) > 0:
                 record = response[0]
-                return {
-                    "time_bucket": record.get("time_bucket"),
-                    "is_burst": False,  # Would check against TemporalBurst nodes
-                }
+                if record.get("time_bucket"):
+                    return {
+                        "time_bucket": record.get("time_bucket"),
+                        "is_burst": bool(record.get("is_burst", False)),
+                    }
         except Exception:
             pass
 

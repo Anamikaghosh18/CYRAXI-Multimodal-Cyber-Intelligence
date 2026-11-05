@@ -21,9 +21,10 @@ def read_artifact_bytes(archive_path, observation, artifact_name):
     if not relative_path:
         return None
 
-    read_bytes = getattr(archive_path, "read_bytes", None)
-    if callable(read_bytes):
-        return read_bytes(relative_path)
+    if not isinstance(archive_path, (str, Path, zipfile.ZipFile)):
+        read_bytes = getattr(archive_path, "read_bytes", None)
+        if callable(read_bytes):
+            return read_bytes(relative_path)
 
     if isinstance(archive_path, zipfile.ZipFile):
         try:
@@ -51,11 +52,15 @@ def read_artifact_bytes(archive_path, observation, artifact_name):
     return None
 
 
-def read_artifact(archive_path, observation, artifact_name):
-    """Read a text artifact as UTF-8."""
+def read_artifact(archive_path, observation, artifact_name, encoding="utf-8"):
+    """Read one textual artifact without extracting the dataset."""
     content = read_artifact_bytes(
         archive_path, observation, artifact_name
     )
     if content is None:
         return None
-    return content.decode("utf-8", errors="replace")
+
+    try:
+        return content.decode(encoding)
+    except (UnicodeDecodeError, AttributeError):
+        return None

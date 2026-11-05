@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",") if o.strip()],
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -61,24 +61,22 @@ def create_app() -> FastAPI:
     def _get_mapper() -> GraphEnrichmentMapper:
         if _state["mapper"] is not None:
             return _state["mapper"]
-        if _state["error"]:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Neo4j unavailable: {_state['error']}",
-            )
         try:
             driver = Neo4jDriver()
             driver.connect()
             driver.apply_schema_constraints()
             _state["driver"] = driver
             _state["mapper"] = GraphEnrichmentMapper(driver)
-        except GraphConnectionError as exc:
+            _state["error"] = None
+            return _state["mapper"]
+        except Exception as exc:
             _state["error"] = str(exc)
+            _state["driver"] = None
+            _state["mapper"] = None
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(exc),
+                detail=f"Neo4j unavailable: {exc}",
             )
-        return _state["mapper"]
 
     # ── Health ─────────────────────────────────────────────────────────────
     @app.get("/health", tags=["Health"])
@@ -151,7 +149,16 @@ def create_app() -> FastAPI:
         observation_id: str,
         limit: int = Query(default=150, ge=1, le=500),
     ):
-        mapper = _get_mapper()
+        try:
+            mapper = _get_mapper()
+        except HTTPException:
+            return {
+                "observation_id": observation_id,
+                "node_count": 0,
+                "edge_count": 0,
+                "nodes": [],
+                "edges": [],
+            }
         paths = mapper._driver.run_query(
             """
             MATCH (root:Observation {observation_id: $observation_id})

@@ -39,6 +39,10 @@ def _now_iso() -> str:
 
 def _extract_registered_domain(host: str) -> str:
     parts = [p for p in host.split(".") if p]
+    if len(parts) >= 3 and parts[-2].lower() in {
+        "co", "com", "org", "gov", "edu", "net", "ac", "ne", "or", "mil"
+    }:
+        return ".".join(parts[-3:])
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
@@ -80,6 +84,12 @@ class GraphEnrichmentMapper:
         isotime  = meta.get("isotime", _now_iso())
         country_code = meta.get("country_code", "")
         country_name = meta.get("country_name", "")
+        ground_truth_label = (
+            meta.get("ground_truth_label")
+            or meta.get("label_normalized")
+            or meta.get("label")
+            or "phishing"
+        )
 
         # ── 2. Observation node ────────────────────────────────────────────
         self._driver.run_write(
@@ -89,7 +99,7 @@ class GraphEnrichmentMapper:
                 o.source_record_id   = $source_record_id,
                 o.dataset_id         = $dataset_id,
                 o.captured_at        = $captured_at,
-                o.ground_truth_label = 'phishing',
+                o.ground_truth_label = $ground_truth_label,
                 o.created_at         = $now
             """,
             {
@@ -98,6 +108,7 @@ class GraphEnrichmentMapper:
                 "dataset_id":      meta.get("dataset_id", "phishpedia_primary"),
                 "captured_at":     isotime,
                 "now":             _now_iso(),
+                "ground_truth_label": ground_truth_label,
             },
         )
         nodes_merged += 1
@@ -412,7 +423,7 @@ class GraphEnrichmentMapper:
     def _derive_obs_id(meta: Dict[str, Any]) -> str:
         """Generate a deterministic obs_id from URL + brand when not already present."""
         seed = f"{meta.get('url', '')}:{meta.get('brand', '')}"
-        return f"obs_{hashlib.md5(seed.encode()).hexdigest()}"
+        return f"obs_{hashlib.sha256(seed.encode()).hexdigest()[:32]}"
 
     def _extract_evidence_items(
         self, envelope: Dict[str, Any], modality: str

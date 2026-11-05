@@ -4,17 +4,23 @@ Handles connection lifecycle, retry logic, and raw Cypher execution.
 
 Design:
 - Uses the official neo4j Python driver (bolt protocol)
-- Connection details read from environment variables (NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-- Exposes a single run_query() method; callers pass Cypher + params
+- Connection details read from environment variables:
+    NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
+  (NEO4J_USER is also accepted as a legacy fallback for NEO4J_USERNAME)
+- Exposes run_query(), run_read(), and run_write() methods; callers pass
+  Cypher + params (always parameterised — never string-concatenated).
 - Fails gracefully with GraphConnectionError when Neo4j is not reachable
-  so the FastAPI service starts cleanly and returns meaningful errors
+  so the FastAPI service starts cleanly and returns meaningful errors.
 
 Install driver:
   pip install neo4j
 """
 
+import logging
 import os
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class GraphConnectionError(RuntimeError):
@@ -30,10 +36,23 @@ class Neo4jDriver:
         user: Optional[str] = None,
         password: Optional[str] = None,
     ):
-        self._uri      = uri      or os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-        self._user     = user     or os.getenv("NEO4J_USER",     "neo4j")
+        self._uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        # Accept NEO4J_USERNAME (documented) and NEO4J_USER (legacy alias).
+        self._user = (
+            user
+            or os.getenv("NEO4J_USERNAME")
+            or os.getenv("NEO4J_USER", "neo4j")
+        )
         self._password = password or os.getenv("NEO4J_PASSWORD", "cyraxi_dev")
-        self._driver   = None
+        self._driver = None
+
+        env = os.getenv("CYRAXI_ENV", "development").lower()
+        if env != "development" and self._password == "cyraxi_dev":
+            logger.warning(
+                "NEO4J_PASSWORD is using the default dev value in a non-development "
+                "environment (%s). Set NEO4J_PASSWORD in your environment.",
+                env,
+            )
 
     def connect(self) -> None:
         """Explicitly establish the Bolt connection.
@@ -46,31 +65,14 @@ class Neo4jDriver:
             return
         try:
             from neo4j import GraphDatabase  # type: ignore
-            self._driver = GraphDatabase.driver(
-                self._uri,
-                auth=(self._user, self._password),
-            )
-            # Verify connectivity on startup
-            self._driver.verify_connectivity()
-        except ImportError:
-            raise GraphConnectionError(
-                "neo4j Python package is not installed. "
-                "Run: pip install neo4j"
-            )
-        except Exception as exc:
-            raise GraphConnectionError(
-                f"Cannot connect to Neo4j at {self._uri}: {exc}"
-            ) from exc
 
-    def _connect(self) -> None:
-        try:
-            from neo4j import GraphDatabase  # type: ignore
             self._driver = GraphDatabase.driver(
                 self._uri,
                 auth=(self._user, self._password),
             )
             # Verify connectivity on startup
             self._driver.verify_connectivity()
+            logger.info("Connected to Neo4j at %s as '%s'.", self._uri, self._user)
         except ImportError:
             raise GraphConnectionError(
                 "neo4j Python package is not installed. "
@@ -112,6 +114,11 @@ class Neo4jDriver:
         """
         Create uniqueness constraints and indexes defined in NEO4J_DATA_MODEL.md.
         Safe to call multiple times (IF NOT EXISTS).
+
+        Only genuine "already exists" errors are suppressed. All other
+        exceptions (network failures, auth errors, version mismatches) are
+        re-raised so they surface clearly rather than silently allowing the
+        graph to operate without required constraints.
         """
         statements = [
             "CREATE CONSTRAINT c_obs_id IF NOT EXISTS FOR (o:Observation) REQUIRE o.observation_id IS UNIQUE",
@@ -134,8 +141,13 @@ class Neo4jDriver:
         for stmt in statements:
             try:
                 self.run_write(stmt)
-            except Exception:
-                pass  # constraint already exists — safe to ignore
+            except Exception as exc:
+                msg = str(exc).lower()
+                if "already exists" in msg or "equivalent" in msg:
+                    # Idempotent re-run — genuinely safe to skip.
+                    continue
+                # Real error (auth failure, network, version mismatch, etc.).
+                raise
 
     def close(self) -> None:
         if self._driver is not None:
