@@ -11,6 +11,7 @@ export const investigationApi = {
     }),
   getInvestigation: (id) => investigationClient.get(`/${encodeURIComponent(id)}`),
   listInvestigations: (limit = 50) => investigationClient.get('', { params: { limit } }),
+  getMetrics: () => investigationClient.get('/metrics'),
 };
 
 export const archiveApi = {

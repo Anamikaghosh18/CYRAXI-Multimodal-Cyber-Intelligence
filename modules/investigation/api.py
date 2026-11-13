@@ -201,6 +201,30 @@ def create_app() -> FastAPI:
         }
 
     @app.get(
+        "/api/v1/investigation/metrics",
+        tags=["Investigation"],
+    )
+    def get_investigation_metrics():
+        """Retrieve aggregated workspace intelligence & performance metrics across saved investigations."""
+        from pathlib import Path
+        import json
+        from modules.evaluator.metrics import aggregate_investigation_metrics
+
+        output_dir = Path("output/investigations")
+        if not output_dir.exists():
+            return aggregate_investigation_metrics([])
+
+        reports = []
+        for filepath in output_dir.glob("*.json"):
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    reports.append(json.load(f))
+            except Exception:
+                continue
+
+        return aggregate_investigation_metrics(reports)
+
+    @app.get(
         "/api/v1/investigation/{investigation_id}",
         tags=["Investigation"],
     )

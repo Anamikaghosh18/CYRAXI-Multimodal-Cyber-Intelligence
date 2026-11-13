@@ -13,7 +13,7 @@
 - **Phishpedia Manifest Spec:** [`docs/dataset/PHISHPEDIA_MANIFEST_SPEC.md`](../dataset/PHISHPEDIA_MANIFEST_SPEC.md)
 - **Model Module Contracts:** [`docs/contracts/MODEL_CONTRACTS.md`](./MODEL_CONTRACTS.md)
 - **Neo4j Graph Model:** [`docs/architecture/NEO4J_DATA_MODEL.md`](../architecture/NEO4J_DATA_MODEL.md)
-- **Dataset Findings & Open Questions:** [`docs/dataset/DATASET_FINDINGS_AND_OPEN_QUESTIONS.md`](../dataset/DATASET_FINDINGS_AND_OPEN_QUESTIONS.md)
+- **Multimodal Evaluation & Metrics:** [`docs/evaluation/CYRAXI_MULTIMODAL_METRICS_REPORT.md`](../evaluation/CYRAXI_MULTIMODAL_METRICS_REPORT.md)
 - **Implementation Plan:** [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
 
 ---

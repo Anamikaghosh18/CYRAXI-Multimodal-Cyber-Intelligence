@@ -8,13 +8,11 @@ CYRAXI is a multimodal cybercrime intelligence platform designed to detect, anal
 - **Multimodal Evidence Fusion:** Calibrated reweighting and identity-conflict assessment
 - **Neo4j Knowledge Graph:** Relational mapping connecting URLs, hosts, captures, evidence, and campaign candidates
 
-For a client-ready product overview and demo script, see [Client Demo Talk Track](docs/CLIENT_DEMO_TALK_TRACK.md).
-
 ## Run the backend
 
 From the repository root, run `python backend_main.py`. This starts the investigation API on port 8002 and the graph API on port 8001. Press Ctrl+C to stop both services. Neo4j must be running for graph-backed requests.
 
-For the local RustFS artifact-storage workflow, follow [Local RustFS setup](docs/RUSTFS_LOCAL_SETUP.md). In short: copy `.env.example` to `.env`, install `requirements-rustfs.txt`, run `docker compose up -d neo4j rustfs`, import the archive with `python scripts/import_archive_to_rustfs.py`, then start the backend. RustFS stores the archive evidence; Neo4j remains the attack index and graph.
+For local artifact storage: copy `.env.example` to `.env`, install dependencies, run `docker compose up -d neo4j`, import the archive with `python scripts/import_archive_to_rustfs.py`, then start the backend. Neo4j stores the attack index, relationships, and graph intelligence.
 
 ## Run the dashboard
 
@@ -33,8 +31,8 @@ Before writing module code, every team member must follow the canonical contract
 - 🕸️ **[Neo4j Knowledge Graph Model](docs/architecture/NEO4J_DATA_MODEL.md)**: Graph entities, relationships, constraints, and Cypher ingestion examples.
 - 📊 **[Dataset Inventory & Modality Coverage](docs/dataset/DATASET_INVENTORY.md)**: Comprehensive analysis of the 30k Phishpedia archive.
 - 📑 **[Manifest Specification](docs/dataset/PHISHPEDIA_MANIFEST_SPEC.md)**: Tabular index specification for streaming dataset iterations.
-- 🚀 **[Modular Implementation Plan](docs/IMPLEMENTATION_PLAN.md)**: Roadmap, hardware requirements, and independent team tasks.
-- ❓ **[Dataset Findings & Open Questions](docs/dataset/DATASET_FINDINGS_AND_OPEN_QUESTIONS.md)**: Key strategic questions and decisions.
+- 📈 **[Multimodal Metrics & Evaluation Report](docs/evaluation/CYRAXI_MULTIMODAL_METRICS_REPORT.md)**: Cross-validation benchmarks, latency SLAs, modality ablation, and visual figures.
+- 🚀 **[Modular Implementation Plan](docs/IMPLEMENTATION_PLAN.md)**: Master architecture roadmap, hardware requirements, and module deliverables.
 
 ---
 
@@ -45,13 +43,26 @@ CYRAXI/
 ├── docs/
 │   ├── dataset/
 │   │   ├── DATASET_INVENTORY.md
-│   │   ├── PHISHPEDIA_MANIFEST_SPEC.md
-│   │   └── DATASET_FINDINGS_AND_OPEN_QUESTIONS.md
+│   │   └── PHISHPEDIA_MANIFEST_SPEC.md
 │   ├── contracts/
 │   │   ├── DATA_CONTRACTS_README.md
 │   │   └── MODEL_CONTRACTS.md
 │   ├── architecture/
-│   │   └── NEO4J_DATA_MODEL.md
+│   │   ├── NEO4J_DATA_MODEL.md
+│   │   ├── KNOWLEDGE_GRAPH_GUIDE.md
+│   │   └── URL_ANALYSIS_PIPELINE.md
+│   ├── evaluation/
+│   │   ├── CYRAXI_MULTIMODAL_METRICS_REPORT.md
+│   │   ├── CYRAXI_MULTIMODAL_METRICS_REPORT.json
+│   │   └── URL_EVALUATION_REPORT.json
+│   └── images/
+│       └── metrics/
+│           ├── 01_modality_performance_comparison.png
+│           ├── 02_roc_curves_multimodal.png
+│           ├── 03_confusion_matrix_fusion.png
+│           ├── 04_pipeline_latency_benchmarks.png
+│           ├── 05_multimodal_fusion_synergy.png
+│           └── 06_top_targeted_brands_distribution.png
 │   └── IMPLEMENTATION_PLAN.md
 ├── schemas/
 │   ├── observation.schema.json
@@ -67,10 +78,24 @@ CYRAXI/
 
 ---
 
-## 🧪 Validating Contracts
+## 🧪 Validating Contracts & Running Metrics
 
 Run the schema validation suite:
 
 ```bash
 python scripts/validate_schemas.py
 ```
+
+Generate the platform benchmark metrics report:
+
+```bash
+python scripts/generate_metrics_report.py
+```
+
+Regenerate scientific metric figures (matplotlib/seaborn):
+
+```bash
+.venv/bin/python scripts/plot_metrics.py
+```
+
+Figures are saved to `docs/images/metrics/` (6 high-resolution PNGs at 300 dpi).
